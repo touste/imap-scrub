@@ -13,7 +13,6 @@ import (
 	"github.com/axllent/imap-scrub/lib"
 	"github.com/axllent/imap-scrub/lib/updater"
 	"github.com/emersion/go-imap"
-	move "github.com/emersion/go-imap-move"
 	"github.com/emersion/go-imap/client"
 	"github.com/spf13/pflag"
 )
@@ -260,7 +259,7 @@ func main() {
 
 			totalSize = totalSize + msg.Size
 
-			if doActions && (rule.RemoveAttachments() || rule.SaveAttachments()) {
+			if doActions && (rule.ReAttachments() || rule.SaveAttachments()) {
 				raw, err := lib.HandleMessage(msg, rule)
 				if err != nil {
 					lib.Log.ErrorF("%s", err)
@@ -270,7 +269,7 @@ func main() {
 				// cReader.SetDebug(os.Stdout)
 				literal := bytes.NewBufferString(raw)
 
-				if rule.RemoveAttachments() {
+				if rule.ReAttachments() {
 					// create a new message and copy envelope & flags
 					if err := cWriter.Append(rule.Mailbox, msg.Flags, msg.Envelope.Date, literal); err != nil {
 						lib.Log.ErrorF(err.Error())
@@ -279,14 +278,13 @@ func main() {
 				}
 			}
 
-			if doActions && (rule.RemoveAttachments() || rule.Delete()) {
+			if doActions && (rule.ReAttachments() || rule.Delete()) {
 				seqSet := new(imap.SeqSet)
-				seqSet.AddNum(msg.Uid)
+				seqSet.AddNum(msg.SeqNum)
 
 				if trashMailbox != "" {
-					// move to Bin
-					mover := move.NewClient(cWriter)
-					if err := mover.UidMove(seqSet, trashMailbox); err != nil {
+					//  to Bin
+					if err := cWriter.Move(seqSet, trashMailbox); err != nil {
 						lib.Log.ErrorF(err.Error())
 						continue
 					}
